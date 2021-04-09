@@ -77,7 +77,7 @@ func (i *item) toMsg(m *dns.Msg, now time.Time) *dns.Msg {
 	m1.Ns = make([]dns.RR, len(i.Ns))
 	m1.Extra = make([]dns.RR, len(i.Extra))
 
-	ttl := uint32(i.ttl(now))
+	ttl := uint32(i.origttl(now))
 	for j, r := range i.Answer {
 		m1.Answer[j] = dns.Copy(r)
 		m1.Answer[j].Header().Ttl = ttl
@@ -97,4 +97,9 @@ func (i *item) toMsg(m *dns.Msg, now time.Time) *dns.Msg {
 func (i *item) ttl(now time.Time) int {
 	ttl := int(i.origTTL) - int(now.UTC().Sub(i.stored).Seconds())
 	return ttl
+}
+
+func (i *item) origttl(now time.Time) int {
+	// ttl := int(i.origTTL) - int(now.UTC().Sub(i.stored).Seconds())
+	return int(i.origTTL)
 }

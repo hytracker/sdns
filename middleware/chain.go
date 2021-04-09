@@ -21,7 +21,7 @@ type Chain struct {
 // NewChain return new fresh chain
 func NewChain(handlers []Handler) *Chain {
 	return &Chain{
-		Writer:   &responseWriter{},
+		Writer:   &responseWriterWrapper{},
 		handlers: handlers,
 		count:    len(handlers),
 	}
@@ -64,8 +64,8 @@ func (ch *Chain) CancelWithRcode(rcode int, do bool) {
 }
 
 // Reset the chain variables
-func (ch *Chain) Reset(w dns.ResponseWriter, r *dns.Msg) {
-	ch.Writer.Reset(w)
+func (ch *Chain) Reset(w dns.ResponseWriter, r *dns.Msg, d string) {
+	ch.Writer.Reset(w, d)
 	ch.Request = r
 	ch.count = len(ch.handlers)
 	ch.head, ch.tail = 0, 0

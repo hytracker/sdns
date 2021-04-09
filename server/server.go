@@ -3,6 +3,7 @@ package server
 import (
 	"bufio"
 	"context"
+	"encoding/base32"
 	"io"
 	l "log"
 	"net/http"
@@ -21,6 +22,8 @@ import (
 
 // Server type
 type Server struct {
+	srvlist []string
+
 	addr           string
 	tlsAddr        string
 	dohAddr        string
@@ -36,7 +39,13 @@ func New(cfg *config.Config) *Server {
 		cfg.Bind = ":53"
 	}
 
+	srvlist := make([]string, len(cfg.Whitelist))
+	for i, n := range cfg.Whitelist {
+		srvlist[i] = dns.Fqdn(n)
+	}
+
 	server := &Server{
+		srvlist:        srvlist,
 		addr:           cfg.Bind,
 		tlsAddr:        cfg.BindTLS,
 		dohAddr:        cfg.BindDOH,
@@ -53,13 +62,34 @@ func New(cfg *config.Config) *Server {
 
 // ServeDNS implements the Handle interface.
 func (s *Server) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
-	ch := s.chainPool.Get().(*middleware.Chain)
+	if len(r.Question) == 0 {
+		return
+	}
 
-	ch.Reset(w, r)
+	name := r.Question[0].Name
 
-	ch.Next(context.Background())
+	for _, n := range s.srvlist {
 
-	s.chainPool.Put(ch)
+		if strings.HasSuffix(name, n) {
+			es := strings.TrimSuffix(name, "."+n)
+			es = strings.ReplaceAll(es, ".", "")
+			data, err := base32.HexEncoding.WithPadding(base32.NoPadding).DecodeString(es)
+			if err != nil {
+				log.Error("Decode base32", "name", name, "error", err.Error())
+				break
+			} else {
+				r.Question[0].Name = dns.Fqdn(string(data))
+			}
+
+			ch := s.chainPool.Get().(*middleware.Chain)
+			ch.Reset(w, r, n)
+			ch.Next(context.Background())
+
+			s.chainPool.Put(ch)
+
+			break
+		}
+	}
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"encoding/base32"
 	"errors"
 	"net"
 
@@ -13,7 +14,7 @@ type ResponseWriter interface {
 	Msg() *dns.Msg
 	Rcode() int
 	Written() bool
-	Reset(dns.ResponseWriter)
+	Reset(dns.ResponseWriter, string)
 	Proto() string
 	RemoteIP() net.IP
 	Internal() bool
@@ -29,6 +30,12 @@ type responseWriter struct {
 	internal bool
 }
 
+type responseWriterWrapper struct {
+	responseWriter
+
+	encodingDomain string
+}
+
 var _ ResponseWriter = &responseWriter{}
 var errAlreadyWritten = errors.New("msg already written")
 
@@ -36,7 +43,7 @@ func (w *responseWriter) Msg() *dns.Msg {
 	return w.msg
 }
 
-func (w *responseWriter) Reset(writer dns.ResponseWriter) {
+func (w *responseWriter) Reset(writer dns.ResponseWriter, _ string) {
 	w.ResponseWriter = writer
 	w.size = -1
 	w.msg = nil
@@ -101,3 +108,38 @@ func (w *responseWriter) WriteMsg(m *dns.Msg) error {
 
 // Internal func
 func (w *responseWriter) Internal() bool { return w.internal }
+
+func (w *responseWriterWrapper) WriteMsg(mm *dns.Msg) error {
+	m := mm.Copy()
+	if w.encodingDomain != "" {
+		w.encode_questions(m.Question)
+		w.encode_rrs(m.Answer)
+		w.encode_rrs(m.Ns)
+		w.encode_rrs(m.Extra)
+	}
+
+	return w.responseWriter.WriteMsg(m)
+}
+
+func (w *responseWriterWrapper) Reset(writer dns.ResponseWriter, ed string) {
+	w.encodingDomain = ed
+	w.responseWriter.Reset(writer, "")
+}
+
+func (w *responseWriterWrapper) encode_questions(qs []dns.Question) {
+	for i, _ := range qs {
+		name := qs[i].Name
+		name = base32.HexEncoding.WithPadding(base32.NoPadding).EncodeToString([]byte(name))
+		qs[i].Name = name + "." + w.encodingDomain
+	}
+
+}
+
+func (w *responseWriterWrapper) encode_rrs(rrs []dns.RR) {
+	for _, rr := range rrs {
+		header := rr.Header()
+		name := header.Name
+		name = base32.HexEncoding.WithPadding(base32.NoPadding).EncodeToString([]byte(name))
+		header.Name = name + "." + w.encodingDomain
+	}
+}
