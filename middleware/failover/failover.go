@@ -75,7 +75,7 @@ func (w *ResponseWriter) WriteMsg(m *dns.Msg) error {
 	req := new(dns.Msg)
 	req.SetQuestion(m.Question[0].Name, m.Question[0].Qtype)
 	req.SetEdns0(dnsutil.DefaultMsgSize, true)
-	req.RecursionDesired = true
+	req.RecursionDesired = false
 	req.CheckingDisabled = m.CheckingDisabled
 
 	for _, server := range w.f.servers {

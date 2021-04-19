@@ -71,18 +71,24 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 	for _, n := range s.srvlist {
 
 		if strings.HasSuffix(name, n) {
+			ch := s.chainPool.Get().(*middleware.Chain)
+
 			es := strings.TrimSuffix(name, "."+n)
-			es = strings.ReplaceAll(es, ".", "")
-			data, err := base32.HexEncoding.WithPadding(base32.NoPadding).DecodeString(es)
-			if err != nil {
-				log.Error("Decode base32", "name", name, "error", err.Error())
-				break
+			if strings.HasPrefix(es, "ns") {
+				ch.Reset(w, r, "")
 			} else {
-				r.Question[0].Name = dns.Fqdn(string(data))
+				es = strings.ReplaceAll(es, ".", "")
+				data, err := base32.HexEncoding.WithPadding(base32.NoPadding).DecodeString(es)
+				if err != nil {
+					log.Error("Decode base32", "name", name, "error", err.Error())
+					break
+				} else {
+					r.Question[0].Name = dns.Fqdn(string(data))
+				}
+
+				ch.Reset(w, r, n)
 			}
 
-			ch := s.chainPool.Get().(*middleware.Chain)
-			ch.Reset(w, r, n)
 			ch.Next(context.Background())
 
 			s.chainPool.Put(ch)

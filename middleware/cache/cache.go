@@ -120,11 +120,11 @@ func (c *Cache) ServeDNS(ctx context.Context, ch *middleware.Chain) {
 		return
 	}
 
-	if q.Name != "." && !req.RecursionDesired {
-		ch.CancelWithRcode(dns.RcodeServerFailure, false)
+	// if q.Name != "." && !req.RecursionDesired {
+	// 	ch.CancelWithRcode(dns.RcodeServerFailure, false)
 
-		return
-	}
+	// 	return
+	// }
 
 	key := cache.Hash(dns.Question{Name: q.Name, Qtype: dns.TypeNULL})
 

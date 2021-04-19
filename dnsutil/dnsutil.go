@@ -90,8 +90,8 @@ func SetRcode(req *dns.Msg, rcode int, do bool) *dns.Msg {
 	m := new(dns.Msg)
 	m.Extra = req.Extra
 	m.SetRcode(req, rcode)
-	m.RecursionAvailable = true
-	m.RecursionDesired = true
+	m.RecursionAvailable = false
+	m.RecursionDesired = false
 
 	if opt := m.IsEdns0(); opt != nil {
 		opt.SetDo(do)
@@ -275,7 +275,7 @@ func NotSupported(w dns.ResponseWriter, req *dns.Msg) error {
 			Id:                req.Id,
 			Opcode:            req.Opcode,
 			Response:          true,
-			RecursionDesired:  true,
+			RecursionDesired:  false,
 			AuthenticatedData: true,
 		},
 	})

@@ -737,8 +737,8 @@ func (r *Resolver) minimize(req *dns.Msg, level int, nomin bool) (*dns.Msg, bool
 }
 
 func (r *Resolver) setTags(req, resp *dns.Msg) *dns.Msg {
-	resp.RecursionAvailable = true
-	resp.RecursionDesired = true
+	resp.RecursionAvailable = false
+	resp.RecursionDesired = false
 	resp.Authoritative = false
 	resp.CheckingDisabled = req.CheckingDisabled
 	resp.AuthenticatedData = false

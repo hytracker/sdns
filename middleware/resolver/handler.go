@@ -93,9 +93,9 @@ func (h *DNSHandler) handle(ctx context.Context, req *dns.Msg) *dns.Msg {
 		}
 	}
 
-	if q.Name != rootzone && !req.RecursionDesired {
-		return dnsutil.SetRcode(req, dns.RcodeServerFailure, do)
-	}
+	// if q.Name != rootzone && !req.RecursionDesired {
+	// 	return dnsutil.SetRcode(req, dns.RcodeServerFailure, do)
+	// }
 
 	// we shouldn't send rd and ad flag to aa servers
 	req.RecursionDesired = false
