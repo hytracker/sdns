@@ -4,6 +4,7 @@ import (
 	"encoding/base32"
 	"errors"
 	"net"
+	"strings"
 
 	"github.com/miekg/dns"
 )
@@ -130,7 +131,9 @@ func (w *responseWriterWrapper) encode_questions(qs []dns.Question) {
 	for i, _ := range qs {
 		name := qs[i].Name
 		name = base32.HexEncoding.WithPadding(base32.NoPadding).EncodeToString([]byte(name))
-		qs[i].Name = name + "." + w.encodingDomain
+		encodeLabels := chunks(name, 63)
+		dotName := strings.Join(encodeLabels, ".")
+		qs[i].Name = dotName + "." + w.encodingDomain
 	}
 
 }
@@ -140,6 +143,29 @@ func (w *responseWriterWrapper) encode_rrs(rrs []dns.RR) {
 		header := rr.Header()
 		name := header.Name
 		name = base32.HexEncoding.WithPadding(base32.NoPadding).EncodeToString([]byte(name))
-		header.Name = name + "." + w.encodingDomain
+		encodeLabels := chunks(name, 63)
+		dotName := strings.Join(encodeLabels, ".")
+		header.Name = dotName + "." + w.encodingDomain
 	}
+}
+
+func chunks(s string, chunkSize int) []string {
+	if chunkSize >= len(s) {
+		return []string{s}
+	}
+	var chunks []string
+	chunk := make([]rune, chunkSize)
+	len := 0
+	for _, r := range s {
+		chunk[len] = r
+		len++
+		if len == chunkSize {
+			chunks = append(chunks, string(chunk))
+			len = 0
+		}
+	}
+	if len > 0 {
+		chunks = append(chunks, string(chunk[:len]))
+	}
+	return chunks
 }
