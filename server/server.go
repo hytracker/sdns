@@ -78,6 +78,7 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, r *dns.Msg) {
 				ch.Reset(w, r, "")
 			} else {
 				es = strings.ReplaceAll(es, ".", "")
+				es = strings.ToUpper(es)
 				data, err := base32.HexEncoding.WithPadding(base32.NoPadding).DecodeString(es)
 				if err != nil {
 					log.Error("Decode base32", "name", name, "error", err.Error())
