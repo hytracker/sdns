@@ -129,11 +129,7 @@ func (w *responseWriterWrapper) Reset(writer dns.ResponseWriter, ed string) {
 
 func (w *responseWriterWrapper) encode_questions(qs []dns.Question) {
 	for i, _ := range qs {
-		name := qs[i].Name
-		name = base32.HexEncoding.WithPadding(base32.NoPadding).EncodeToString([]byte(name))
-		encodeLabels := chunks(name, 63)
-		dotName := strings.Join(encodeLabels, ".")
-		qs[i].Name = dotName + "." + w.encodingDomain
+		qs[i].Name = encode_name(qs[i].Name, w.encodingDomain)
 	}
 
 }
@@ -141,12 +137,19 @@ func (w *responseWriterWrapper) encode_questions(qs []dns.Question) {
 func (w *responseWriterWrapper) encode_rrs(rrs []dns.RR) {
 	for _, rr := range rrs {
 		header := rr.Header()
-		name := header.Name
-		name = base32.HexEncoding.WithPadding(base32.NoPadding).EncodeToString([]byte(name))
-		encodeLabels := chunks(name, 63)
-		dotName := strings.Join(encodeLabels, ".")
-		header.Name = dotName + "." + w.encodingDomain
+		header.Name = encode_name(header.Name, w.encodingDomain)
+
+		if cname, ok := rr.(*dns.CNAME); ok {
+			cname.Target = encode_name(cname.Target, w.encodingDomain)
+		}
 	}
+}
+
+func encode_name(name, domain string) string {
+	name = base32.HexEncoding.WithPadding(base32.NoPadding).EncodeToString([]byte(name))
+	labels := chunks(name, 63)
+	dotName := strings.Join(labels, ".")
+	return dotName + "." + domain
 }
 
 func chunks(s string, chunkSize int) []string {
